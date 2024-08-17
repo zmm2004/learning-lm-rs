@@ -167,8 +167,29 @@ fn mlp(
     rms_w: &Tensor<f32>,
     eps: f32,
 ) {
-    todo!("Implement mlp");
+    // Step 1: Apply RMS normalization
+    OP::rms_norm(hidden_states, residual, rms_w, eps);
+
+    // Step 2: Matrix multiplication
+    OP::matmul_transb(gate, 0.0, hidden_states, w_gate, 1.0);
+    OP::matmul_transb(up, 0.0, hidden_states, w_up, 1.0);
+
+    // Step 3: Apply SiLU activation
+    OP::silu(gate, up);
+
+    // Step 4: Matrix multiplication
+    OP::matmul_transb(hidden_states, 0.0, gate, w_down, 1.0);
+
+    // Step 5: Residual addition
+    unsafe {
+        residual.data_mut().iter_mut().zip(hidden_states.data().iter()).for_each(|(r, h)| {
+            *r += *h;
+        });
+    }
 }
+
+
+
 
 #[test]
 pub fn test_mlp() {

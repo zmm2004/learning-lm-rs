@@ -5,7 +5,18 @@ pub struct Tensor<T> {
     offset: usize,
     length: usize,
 }
+impl<T: Copy + Clone + Default> Tensor<T> {
+    // Existing methods...
 
+    pub fn clone_tensor(&self) -> Self {
+        Tensor {
+            data: Arc::clone(&self.data),
+            shape: self.shape.clone(),
+            offset: self.offset,
+            length: self.length,
+        }
+    }
+}
 impl<T: Copy + Clone + Default> Tensor<T> {
     pub fn new(data: Vec<T>, shape: &Vec<usize>) -> Self {
         let length = data.len();

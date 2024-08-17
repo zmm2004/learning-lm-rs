@@ -70,26 +70,89 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
     }
 }
 
+
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
-    todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
+    // 确保 y、x 和 w 的形状兼容
+    assert_eq!(y.shape(), x.shape());
+    assert_eq!(x.shape().last().unwrap(), &w.size());
+
+    // 获取数据
+    let _y = unsafe { y.data_mut() };
+    let _x = x.data();
+    let _w = w.data();
+
+    // 获取最后一维的长度
+    let dim = *x.shape().last().unwrap();
+
+    // 按照最后一维进行计算
+    for i in 0..(x.size() / dim) {
+        let start = i * dim;
+        let end = start + dim;
+
+        // 计算均方根值
+        let rms = (_x[start..end].iter().map(|&val| val * val).sum::<f32>() / dim as f32).sqrt();
+
+        // 逐元素计算 y
+        for j in 0..dim {
+            _y[start + j] = (_x[start + j] * _w[j]) / (rms + epsilon);
+        }
+    }
 }
 
-// y = sigmoid(x) * x * y
-// hint: this is an element-wise operation
+
+
 pub fn silu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
-    // let len = y.size();
-    // assert!(len == x.size());
+    // 确保 y 和 x 的大小相同
+    assert_eq!(y.size(), x.size());
 
-    // let _y = unsafe { y.data_mut() };
-    // let _x = x.data();
+    // 获取可变的 y 数据和不可变的 x 数据
+    let _y = unsafe { y.data_mut() };
+    let _x = x.data();
 
-    todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考")
+    // 定义 sigmoid 函数作为闭包
+    let sigmoid = |val: f32| -> f32 {
+        1.0 / (1.0 + (-val).exp())
+    };
+
+    // 逐元素计算 SiLU，并更新 y 的值
+    for i in 0.._y.len() {
+        _y[i] = _x[i] * sigmoid(_x[i]) * _y[i];
+    }
 }
+
+
 
 // C = beta * C + alpha * A @ B^T
 // hint: You don't need to do an explicit transpose of B
 pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor<f32>, alpha: f32) {
-    todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+    // 检查输入的维度是否符合矩阵乘法的要求
+    assert!(a.shape().len() == 2 && b.shape().len() == 2 && c.shape().len() == 2);
+    assert!(a.shape()[0] == c.shape()[0] && b.shape()[0] == c.shape()[1]);
+    assert!(a.shape()[1] == b.shape()[1]);
+
+    let m = a.shape()[0]; // A的行数
+    let k = a.shape()[1]; // A的列数，也是B的列数
+    let n = b.shape()[0]; // B的行数，也是C的列数
+
+    let a_data = a.data();
+    let b_data = b.data();
+    let c_data = unsafe { c.data_mut() };
+
+    // C = beta * C
+    for i in 0..c_data.len() {
+        c_data[i] *= beta;
+    }
+
+    // C += alpha * A @ B^T
+    for i in 0..m {
+        for j in 0..n {
+            let mut sum = 0.0;
+            for p in 0..k {
+                sum += a_data[i * k + p] * b_data[j * k + p]; // 注意这里使用B的列作为行
+            }
+            c_data[i * n + j] += alpha * sum;
+        }
+    }
 }
 
 // Dot product of two tensors (treated as vectors)
