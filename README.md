@@ -25,7 +25,7 @@ $$
 y=silu(x) × y
 $$
 
-其中
+其中-
 
 $$
 silu(x) = sigmoid(x) × x
